@@ -115,142 +115,34 @@ The alert logic generated a false alarm because the letters "ls" sit consecutive
 
 ---
 
-<img width="982" height="456" alt="image" src="https://github.com/user-attachments/assets/47b9ddfc-6bdc-473c-92df-8fdf9c961e1c" />
+### * Click **No**
 
-### * Click **Yes**
+<img width="985" height="542" alt="image" src="https://github.com/user-attachments/assets/075bbd02-aae0-43dd-b99e-9f4ee736ed2f" />
 
-Reasons:
-My previous screenshot, there was another alert right next to this one under Event ID 118 involving the exact same host (EliotPRD / 172.16.17.46). That separate alert explicitly flagged a ```whoami``` command in a requested URL, which means there is indeed additional, different traffic originating from this source address that needs to be scrutinized.
+The playbook asks if there is different traffic coming from the source device (172.16.17.46). Looking closely at the log results:
 
-<img width="1898" height="892" alt="image" src="https://github.com/user-attachments/assets/03b6549c-d527-4249-822f-9ffba1cb5934" />
+• Same Destination: Every single log entry shows communication going to the exact same destination IP address (188.114.96.15).
 
-### Let's verify, why **"YES"**
-Check Log Management
-1. Navigate back to the Log Management tab on the left sidebar menu.
-2. In the search box at the top, enter the host IP address: 172.16.17.46.
-3. Look through the list of log entries around the same timestamp (2022-02-26/27).
-4. You will see traffic rows showing requests to destination IP addresses. Look for any log entries containing a different signature, such as a request body or URL containing the string whoami (which relates directly to the other alert, Event ID 118).
+• Same Protocol/Type: Every entry is categorized under the same log Type (Proxy) over port 443 (HTTPS).
 
----
+• Same Activity: This entire list represents the exact same browsing session to the LetsDefend blog server where the benign search occurred.
 
-<img width="1006" height="423" alt="image" src="https://github.com/user-attachments/assets/84761066-d6f1-4b5a-bd68-3cb915ebe245" />
+<img width="1913" height="845" alt="image" src="https://github.com/user-attachments/assets/5448af78-b0c4-40d4-a565-62ee95d6f11b" />
 
-<img width="1898" height="892" alt="image" src="https://github.com/user-attachments/assets/03b6549c-d527-4249-822f-9ffba1cb5934" />
-
-This log shows a Malicious event. Here is the technical breakdown of what is happening:
-
-• Targeted Request: The host is sending an HTTP POST request to an internal IP address (172.16.17.16/video/).
-
-• The Payload: The parameter ?c=whoami is an explicit attempt to execute the Linux whoami command on that web server. Unlike our previous "skills" false alarm, this is a literal command intended to see which user account the web server is running under.
-
-• Successful Execution: The HTTP Response Status is 200, meaning the command request was accepted, processed, and responded to successfully by the server.
-
-• Suspicious User-Agent: The request uses an ancient Internet Explorer 6 user-agent (MSIE 6.0; Windows NT 5.1), which is standard behavior for automated hacking tools or malicious scripts trying to disguise traffic.
+Because there are no connections to unexpected external servers, no weird scanning traffic, and no malicious command-and-control (C2) behavior originating from the host, there is no different/unrelated traffic to worry about.
 
 ---
 
-<img width="995" height="315" alt="image" src="https://github.com/user-attachments/assets/b4bbe116-a304-48fa-b8ab-a5306024d271" />
-
-* Click Command Injection.
-
-Why is the correct choice:
-
-The payload parameters LS and ?c=whoami directly targets the operating system by attempting to execute the built-in system commands ls and whoami. When an attacker inputs system commands into a web application to force the server to execute them, it is a textbook case of Command Injection.
-
----
-
-<img width="999" height="528" alt="image" src="https://github.com/user-attachments/assets/ff00e62d-7bac-4ddf-a2ee-5f45f3c3e371" />
-
-Click **Not Planned.**
-
-Why this is the correct choice:
-
-• Host Character: The hostname we verified earlier is EliotPRD (an abbreviation for a Production environment machine), which does not match simulation product names like Verodin, AttackIQ, or Picus.
-
-<img width="1909" height="767" alt="image" src="https://github.com/user-attachments/assets/9fc85ec6-99c5-4a6b-a7c1-71edf8c4cb54" />
-
-• User Context: The activity was associated with user eliot on an internal server machine, and there are no indicators in the LetsDefend mailbox or logs suggesting an official internal penetration test was actively scheduled for this asset during this timeframe.
-
----
-
-<img width="1002" height="382" alt="image" src="https://github.com/user-attachments/assets/fbaed0d8-0d8a-4ec7-b7c9-fc96e17969ca" />
-
-* Click Company Network → Company Network.
-
-### Why this is the correct:
-
-The malicious traffic I verified in the log management tab shows the source host 172.16.17.46 (EliotPRD) sending a request to 172.16.17.16. Since both of these are private, internal IP addresses belonging to the corporate environment, the traffic is entirely internal.
-
-• Source Address Field: The log explicitly labels the Source IP as 172.16.17.46, which belongs directly to the host machine EliotPRD.
-
-• Destination Address Field: The log labels the Destination IP as 172.16.17.16 (the internal web server hosting the /video/ directory path).
-
-• Directionality (HTTP POST): An HTTP POST request inherently moves from a client (source) to a server (destination). In this case, EliotPRD initiated the connection outbound from itself and targeted the web server to upload/submit the malicious payload (?c=whoami).
-
-
-### The IP 188.114.96.15 belongs to the original alert (Event ID 117) that I started with. 
-
-Here is the difference:
-
-• 188.114.96.15 (The False Alarm): This traffic went from your host (172.16.17.46) to the Internet. It was the benign search query for the word "skills" on the LetsDefend blog.
-
-• 172.16.17.16 (The Real Attack): This is the different traffic you uncovered during the playbook steps. It went from your host to another internal machine (Company Network → Company Network) containing the malicious whoami payload.
-
----
-
-<img width="922" height="606" alt="image" src="https://github.com/user-attachments/assets/9ff4b5d0-f5c3-45d1-9ef4-fcc6a6a4bcd3" />
-
-1. Click the Endpoint Security link visible on your playbook screen (or navigate to it via the left sidebar menu).
-2. Find the compromised host asset named EliotPRD (172.16.17.46).
-3. Locate the Change Status column on the right side and toggle the switch to Isolate/Contain the host machine.
-4. Once I successfully completed the isolation toggle on that page and return to this playbook pop-up and click the blue Next button.
-
-<img width="1864" height="867" alt="image" src="https://github.com/user-attachments/assets/fc7bb664-4f66-4a08-8fd0-9320460c024e" />
-
----
-
-<img width="992" height="509" alt="image" src="https://github.com/user-attachments/assets/2c0f4f29-d7ef-4223-983a-a34ba69af1cd" />
-
-### Artifact
-1. Input the following configuration details:
-• Value: ?c=whoami
-
-• Comment: Malicious OS command injection payload
-
-• Type: Select URL
-
-2. Click the + icon to create a row, and input the following configuration details:
-• Value: 172.16.17.16
-
-• Comment: Target internal web server attacked via command injection
-
-• Type: Select IP Address from the dropdown menu
-
----
-
-## Click Yes.
-<img width="986" height="621" alt="image" src="https://github.com/user-attachments/assets/b595b7dd-96e2-45e3-a4dd-37e63cfee404" />
-
-### Reasons to escalate to Tier 2:
-
-The criteria listed right on the playbook screen clearly state that escalation is mandatory if:
-
-• The attack succeeds: The log showed a 200 OK HTTP response to a web request carrying an active command injection payload (?c=whoami), which means the target server successfully processed the request and ran the command.
-
-<img width="1898" height="892" alt="image" src="https://github.com/user-attachments/assets/bc6cf947-471e-4b42-9bea-5e4fea7262f8" />
-
-• The traffic is Inside \(\rightarrow \) Inside: As we verified, the traffic originated from 172.16.17.46 (internal host) and hit 172.16.17.16 (internal server). This confirms lateral movement inside the local corporate environment.
-
-* Clicking Yes will forward the case to Tier 2 senior analysts for deep forensics and incident response.
-
----
-
-<img width="983" height="500" alt="image" src="https://github.com/user-attachments/assets/7dd920b8-535e-4bb9-97b5-6fd10ca62978" />
+<img width="993" height="559" alt="image" src="https://github.com/user-attachments/assets/8c40b4b0-8634-4c76-8151-360af83222e3" />
 
 ```
-Initial alert SOC167 for EventID 117 was triggered by a false positive substring match on the word "skills" during an external blog lookup. However, further cross-examination of log management revealed separate, highly suspicious traffic originating from the same source host (172.16.17.46 / EliotPRD).
+The alert for EventID 117 (SOC167 - LS Command Detected in Requested URL) is a False Positive. The alert was triggered due to a signature match on the string "ls" within the requested URL parameter (https://letsdefend.io/blog/?s=skills). 
 
-The host machine conducted an internal lateral attack targeting web server 172.16.17.16 via an HTTP POST request carrying an OS command injection payload (?c=whoami). The server responded with an HTTP 200 OK status, confirming successful execution. An ancient User-Agent string was utilized during the attack, highlighting automated script activity. 
-
-Due to successful inside-to-inside command injection compromise, the source host EliotPRD has been network-isolated via Endpoint Security, the target server IP was added as an artifact, and the case is being officially escalated to Tier 2 for full incident response and deep forensics.
+The string is part of the benign search query "skills" and does not contain any malicious command injection or directory traversal payloads. The traffic represents normal outbound web browsing from internal host EliotPRD (172.16.17.46) to the destination IP (188.114.96.15). No further remediation action is required.
 ```
+
+---
+
+<img width="973" height="431" alt="image" src="https://github.com/user-attachments/assets/275870d2-d6c4-46ed-8f6d-22ba26e2bb48" />
+
+Let's Click **Confirm & Close** to submit the playbook and finalize investigation.
